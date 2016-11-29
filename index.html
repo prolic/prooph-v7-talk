@@ -27,15 +27,11 @@
 <div class="slides">
 
 <section>
-    <h2>
-        Hi!
-    </h2>
+    <h1>Hi!</h1>
 </section>
 
 <section>
-    <h2>
-        Sascha-Oliver Prolic<br>
-    </h2>
+    <h1>Sascha-Oliver Prolic</h1>
 </section>
 
 <section>
@@ -62,39 +58,22 @@
 </section>
 
 <section>
-    <section>
-        <h2>Current projects</h2>
-        <p>
-            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prooph/event-store">Prooph Event Store</a>,
-            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prooph/pdo-event-store">Prooph PDO Event Store</a>,
-            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prooph/service-bus">Prooph Service-Bus</a>,
-            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prooph/event-sourcing">Prooph Event Sourcing</a>,
-            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prooph/psr7-middleware">Prooph PSR-7 middleware</a>,
-            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prooph/service-bus-zfc-rbac-bridge">Service-Bus ZFC-Rbac Bridge</a>,
-            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prolic/HumusAmqp">HumusAmqp</a>,
-            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prolic/PhpDisruptor">PhpDisruptor</a>
-        </p>
-    </section>
-</section>
-
-<section>
     <h1>Prooph Event Store v7</h1>
 </section>
 
 <section>
-    <h1>Changes & New Features</h1>
-</section>
-
-<section>
-    <h2>Changes</h2>
-    <p class="fragment" data-fragment-index="1">Requires PHP 7.1 (strict types, scalar type hints, return types, ...)</p>
+    <h2>Changes & New Features</h2>
+    <p class="fragment" data-fragment-index="1">Requires PHP 7.1 (scalar type hints, return types, ...)</p>
     <p class="fragment" data-fragment-index="2">Event Store Interfaces</p>
     <p class="fragment" data-fragment-index="3">Different Event Store Implementations - no adapters</p>
-    <p class="fragment" data-fragment-index="4">more</p>
+    <p class="fragment" data-fragment-index="4">Implementation details of PDO-EventStore</p>
+    <p class="fragment" data-fragment-index="5">Queries & Projections</p>
 </section>
 
 <section>
-    <pre><code class="php">interface EventStore
+    <pre><code class="php">namespace Prooph\EventStore;
+
+interface EventStore
 {
     public function create(Stream $stream): void;
 
@@ -108,7 +87,9 @@
 </section>
 
 <section>
-    <pre><code class="php">interface EventStore
+    <pre><code class="php">namespace Prooph\EventStore;
+
+interface EventStore
 {
     /* more methods */
 
@@ -125,7 +106,9 @@
 </section>
 
 <section>
-    <pre><code class="php">interface EventStore
+    <pre><code class="php">namespace Prooph\EventStore;
+
+interface EventStore
 {
     /* more methods */
 
@@ -143,6 +126,65 @@
         MetadataMatcher $metadataMatcher = null
     ): Stream;
 }</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">namespace Prooph\EventStore;
+
+interface TransactionalEventStore extends EventStore
+{
+    public function beginTransaction(): void;
+
+    public function commit(): void;
+
+    public function rollback(): void;
+
+    public function isInTransaction(): bool;
+}</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">namespace Prooph\EventStore;
+
+interface ActionEventEmitterEventStore extends EventStore
+{
+    const EVENT_APPEND_TO = 'appendTo';
+    const EVENT_CREATE = 'create';
+    const EVENT_LOAD = 'load';
+    const EVENT_LOAD_REVERSE = 'loadReverse';
+    const EVENT_DELETE = 'delete';
+    const EVENT_HAS_STREAM = 'hasStream';
+    const EVENT_FETCH_STREAM_METADATA = 'fetchStreamMetadata';
+
+    public function getActionEventEmitter(): ActionEventEmitter;
+}</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">namespace Prooph\EventStore;
+
+interface TransactionalActionEventEmitterEventStore extends
+    ActionEventEmitterEventStore,
+    TransactionalEventStore
+{
+    const EVENT_BEGIN_TRANSACTION = 'beginTransaction';
+    const EVENT_COMMIT = 'commit';
+    const EVENT_IS_IN_TRANSACTION = 'isInTransaction';
+    const EVENT_ROLLBACK = 'rollback';
+}</code></pre>
+</section>
+
+<section>
+    <h2>Provides abstract classes</h2>
+    <p class="fragment" data-fragment-index="1">AbstractActionEventEmitterEventStore</p>
+    <p class="fragment" data-fragment-index="2">AbstractTransactionalActionEventEmitterEventStore</p>
+</section>
+
+<section>
+    <h2>New implementations</h2>
+    <p class="fragment" data-fragment-index="1">InMemoryEventStore (extends AbstractTransactionalActionEventEmitterEventStore)</p>
+    <p class="fragment" data-fragment-index="2">MySQLEventStore (extends AbstractActionEventEmitterEventStore)</p>
+    <p class="fragment" data-fragment-index="3">PostgresEventStore (extends AbstractTransactionalActionEventEmitterEventStore)</p>
 </section>
 
 <section>
@@ -178,7 +220,7 @@ $metadataMatcher = $metadataMatcher->withMetadataMatch(
     4
 );
 
-$stream = $this->eventStore->load(
+$stream = $eventStore->load(
     $streamName,
     1,
     null,
@@ -188,7 +230,523 @@ $stream = $this->eventStore->load(
 </section>
 
 <section>
-    <h2>Hire me!</h2>
+    <h1>Details of PDOEventStore</h1>
+</section>
+
+<section>
+    <pre><code class="php">namespace Prooph\EventStore\PDO;
+
+interface TableNameGeneratorStrategy
+{
+    public function __invoke(StreamName $streamName): string;
+}</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">namespace Prooph\EventStore\PDO\TableNameGeneratorStrategy;
+
+final class Sha1 implements TableNameGeneratorStrategy
+{
+    public function __invoke(StreamName $streamName): string
+    {
+        return '_' . sha1($streamName->toString());
+    }
+}</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">namespace Prooph\EventStore\PDO;
+
+interface IndexingStrategy
+{
+    /**
+     * @return string[]
+     */
+    public function createSchema(string $tableName): array;
+
+    public function oneStreamPerAggregate(): bool;
+
+    /**
+     * @return string[]
+     */
+    public function uniqueViolationErrorCodes(): array;
+}</code></pre>
+</section>
+
+<section>
+    <h2>Different indexing strategies</h2>
+    <p class="fragment" data-fragment-index="1">MySQLAggregateStreamStrategy</p>
+    <p class="fragment" data-fragment-index="2">MySQLSingleStreamStrategy</p>
+    <p class="fragment" data-fragment-index="3">MySQLSimpleStreamStrategy</p>
+    <p class="fragment" data-fragment-index="4">Postgres...</p>
+</section>
+
+<section>
+    <h2>AggregateStreamStrategy</h2>
+    <p class="fragment" data-fragment-index="1">Used for event sourcing</p>
+    <p class="fragment" data-fragment-index="2">One stream per aggregate</p>
+</section>
+
+<section>
+    <h2>SingleStreamStrategy</h2>
+    <p class="fragment" data-fragment-index="1">Used for event sourcing</p>
+    <p class="fragment" data-fragment-index="2">One stream per aggregate type</p>
+    <p class="fragment" data-fragment-index="3">or one stream for all aggregates</p>
+</section>
+
+<section>
+    <h2>SimpleStreamStrategy</h2>
+    <p class="fragment" data-fragment-index="1">Used outside of event sourcing</p>
+    <p class="fragment" data-fragment-index="2">Useful for projections, too</p>
+</section>
+
+<section>
+    <h1>Queries & <br>Projections</h1>
+</section>
+
+<section>
+    <h2>Projections in the past</h2>
+    <pre><code class="php">namespace Prooph\ProophessorDo\Projection\User;
+
+final class UserProjector
+{
+    public function onUserWasRegistered(UserWasRegistered $event)
+    {
+        $this->connection->insert(Table::USER, [
+            'id' => $event->userId()->toString(),
+            'name' => $event->name(),
+            'email' => $event->emailAddress()->toString()
+        ]);
+    }
+
+    public function onTodoWasPosted(TodoWasPosted $event)
+    {
+        // ...
+    }
+}</code></pre>
+</section>
+
+<section>
+    <h1>Queries</h1>
+</section>
+
+<section>
+    <pre><code class="php">namespace Prooph\EventStore\Projection;
+
+interface Query
+{
+    public function init(Closure $callback): Query;
+    public function fromStream(string $streamName): Query;
+    public function fromStreams(string ...$streamNames): Query;
+    public function fromCategory(string $name): Query;
+    public function fromCategories(string ...$names): Query;
+    public function fromAll(): Query;
+    public function when(array $handlers): Query;
+    public function whenAny(Closure $closure): Query;
+    public function reset(): void;
+    public function run(): void;
+    public function stop(): void;
+    public function getState(): array;
+}</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">function prepareEventStream(string $name, EventStore $eventStore)
+{
+    $events = [];
+    $events[] = UserCreated::with([
+        'name' => 'Alex'
+    ], 1);
+    for ($i = 2; $i < 50; $i++) {
+        $events[] = UsernameChanged::with([
+            'name' => uniqid('name_')
+        ], $i);
+    }
+    $events[] = UsernameChanged::with([
+        'name' => 'Sascha'
+    ], 50);
+
+    $eventStore->create(new Stream(
+        new StreamName($name),
+        new ArrayIterator($events)
+    ));
+}</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">prepareEventStream('user-123', $eventStore);
+$query = new InMemoryEventStoreQuery($eventStore);
+$query
+    ->init(function (): array {
+        return ['count' => 0];
+    })
+    ->fromStream('user-123')
+    ->when([
+        UsernameChanged::class => function (
+            array $state, UsernameChanged $event
+        ): array {
+            $state['count']++;
+            return $state;
+        }
+    ])
+    ->run();
+
+echo $query->getState()['count']; // 49
+$query->reset();
+$query->run();
+</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">prepareEventStream('user-123', $eventStore);
+prepareEventStream('user-234', $eventStore);
+
+$query = new PostgresEventStoreQuery($eventStore, $connection, 'event_streams');
+
+$query
+    ->init(function (): array {
+        return ['count' => 0];
+    })
+    ->fromStreams('user-123', 'user-234')
+    ->whenAny(
+        function (array $state, Message $event): array {
+            $state['count']++;
+            return $state;
+        }
+    )
+    ->run();
+
+echo $query->getState()['count']; // 100
+</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">prepareEventStream('user-123', $eventStore);
+
+$query = new PostgresEventStoreQuery($eventStore, $connection, 'event_streams');
+$query
+    ->init(function (): array {
+        return ['count' => 0];
+    })
+    ->fromCategory('user')
+    ->whenAny(
+        function (array $state, Message $event): array {
+            $state['count']++;
+            return $state;
+        }
+    )
+    ->run();
+
+// more code
+</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">// more code
+
+$events = [];
+for ($i = 51; $i <= 100; $i++) {
+    $events[] = UsernameChanged::with([
+        'name' => uniqid('name_')
+    ], $i);
+}
+$eventStore->appendTo(
+    new StreamName('user-123'),
+    new ArrayIterator($events)
+);
+
+$query->run();
+echo $query->getState()['count']; // 100
+</code></pre>
+</section>
+
+<section>
+    <h1>Projections</h1>
+    <p class="fragment" data-fragment-index="1">Projections are like queries, but persistent</p>
+    <p class="fragment" data-fragment-index="2">Projections have special additional methods:</p>
+    <p class="fragment" data-fragment-index="3">linkTo(string $streamName, Message $event)</p>
+    <p class="fragment" data-fragment-index="4">emit(Message $event)</p>
+</section>
+
+<section>
+    <pre><code class="php">namespace Prooph\EventStore\Projection;
+
+interface Projection extends Query
+{
+    public function getName(): string;
+
+    public function emit(Message $event): void;
+
+    public function linkTo(string $streamName, Message $event): void;
+
+    public function delete(bool $deleteEmittedEvents): void;
+}</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">prepareEventStream('user-123', $eventStore);
+
+$eventStore->create(new Stream(
+    new StreamName('foo'),
+    new ArrayIterator()
+));
+
+$projection = new PostgresEventStoreProjection(
+    $eventStore,
+    $connection,
+    'test_projection', // unique name of projection
+    'event_streams', // event streams table
+    'projections', // projections table
+    1000, // timeout in ms
+    true // enable emit
+);
+
+// more code</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">// more code
+
+$projection
+    ->fromStream('user-123')
+    ->whenAny(
+        function (array $state, Message $event): array {
+            $this->linkTo('foo', $event);
+            return $state;
+        }
+    )
+    ->run();
+
+echo iterator_count($eventStore->load(
+    new StreamName('foo'))->streamEvents()
+); // 50
+
+// more code
+</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">// more code
+
+$events = [];
+for ($i = 51; $i < 100; $i++) {
+    $events[] = UsernameChanged::with([
+        'name' => uniqid('name_')
+    ], $i);
+}
+$events[] = UsernameChanged::with([
+    'name' => 'Oliver'
+], 100);
+$eventStore->appendTo(new StreamName('user-123'), new ArrayIterator($events));
+
+// more code
+</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">// more code
+
+$projection
+    ->fromStream('user-123')
+    ->whenAny(
+    function (array $state, Message $event): array {
+        $this->linkTo('foo', $event);
+        return $state;
+    })
+    ->run();
+
+echo iterator_count($eventStore->load(
+    new StreamName('foo'))->streamEvents()
+); // 100</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">$prepareEventStream('user-123', $eventStore);
+
+$projection = new PostgresEventStoreProjection(
+    $eventStore,
+    $connection,
+    'user_created_projection',
+    'event_streams',
+    'projections',
+    1000,
+    true
+);
+
+$projection
+    ->fromStream('user-123')
+    ->when([
+        UserCreated::class => function ($state, $event): void {
+            $this->emit($event);
+        }
+    ])
+    ->run();
+</code></pre>
+</section>
+
+<section>
+    <h2>Projections, nice!<br>But for what?</h2>
+    <p class="fragment" data-fragment-index="1">Create state in minutes without writing a new model</p>
+    <p class="fragment" data-fragment-index="2">Indexing events</p>
+    <p class="fragment" data-fragment-index="3">Faster event store queries</p>
+</section>
+
+<section>
+    <h2>Examples</h2>
+
+</section>
+
+<section>
+    <h2>Standard-Projections<br>https://github.com/prooph/standard-projections</h2>
+</section>
+
+<section>
+    <h2>AllStreamProjection</h2>
+    <pre><code class="php">
+$query->fromStream('$all')
+// equals $query->fromAll(), but faster
+</code></pre>
+</section>
+
+<section>
+    <h2>CategoryStreamProjection</h2>
+    <pre><code class="php">$prepareEventStream('user-123', $eventStore);
+$prepareEventStream('user-234', $eventStore);
+
+$query->fromStream('$ct-user')
+// equals $query->fromCategory('user'), but faster
+</code></pre>
+</section>
+
+<section>
+    <h2>MessageName-<br>StreamProjection</h2>
+    <pre><code class="php">$query->fromStream('$mn-user-created')
+$query->fromStream('$mn-user-changed-name')
+</code></pre>
+</section>
+
+<section>
+    <h1>Use case:</h1>
+    <h2>Finding all events coming from user Sascha</h2>
+    <pre><code class="php">var_dump($message->metadata());
+
+// output:
+array(1) {
+  ["username"]=>
+  string(6) "Sascha"
+}
+</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">$projection = new PostgresEventStoreProjection(
+    $eventStore,
+    $connection,
+    'user_sorted_events',
+    'event_streams',
+    'projections',
+    1000,
+    true
+);
+
+$projection
+    ->fromAll()
+    ->whenAny(function ($state, Message $event): void {
+        $this->linkTo($event->metadata()['username'], $event);
+    })
+    ->run();
+</code></pre>
+</section>
+
+<section>
+    <h2>ReadModelProjections</h2>
+    <pre><code class="php">namespace Prooph\EventStore;
+
+interface ReadModelProjection
+{
+    public function initProjection(): void;
+    // f.e. create db table
+
+    public function projectionIsInitialized(): bool;
+    // return true if db table is created
+
+    public function resetProjection(): void;
+    // f.e. truncate db table
+
+    public function deleteProjection(): void;
+    // f.e. delete db table
+}</code></pre>
+</section>
+
+<section>
+    <h2>Projections in the past</h2>
+    <pre><code class="php">namespace Prooph\ProophessorDo\Projection\User;
+
+final class UserProjector
+{
+    public function onUserWasRegistered(UserWasRegistered $event)
+    {
+        $this->connection->insert(Table::USER, [
+            'id' => $event->userId()->toString(),
+            'name' => $event->name(),
+            'email' => $event->emailAddress()->toString()
+        ]);
+    }
+
+    public function onTodoWasPosted(TodoWasPosted $event)
+    {
+        // ...
+    }
+}</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">$this->prepareEventStream('user-123', $eventStore);
+
+$projection = new PostgresEventStoreReadModelProjection(
+    $eventStore,
+    $connection,
+    'test_projection',
+    $readModel,
+    'event_streams',
+    'projections',
+    1000
+);
+
+// more code</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">// more code
+
+$projection
+    ->fromAll()
+    ->when([
+        UserCreated::class => function ($state, Message $event) {
+            $this->readModelProjection()->insert(
+                'name',
+                $event->payload()['name']
+            );
+        },
+        UsernameChanged::class => function ($state, Message $event) {
+            $this->readModelProjection()->update(
+                'name',
+                $event->payload()['name']
+            );
+        }
+    ])
+    ->run();</code></pre>
+</section>
+
+<section>
+    <h2>Before final release</h2>
+    <p class="fragment" data-fragment-index="1">Updating some other components</p>
+    <p class="fragment" data-fragment-index="2">Write some more tests</p>
+    <p class="fragment" data-fragment-index="3">Write documentation</p>
+</section>
+
+<section>
+    <h1>Hire me!</h1>
 </section>
 
 <section>
