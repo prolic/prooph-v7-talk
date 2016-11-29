@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="utf-8" />
+    <title>CQRS &amp; Event Sourcing</title>
+    <meta name="description" content="CQRS &amp; Event Sourcing Talk" />
+    <meta name="author" content="Sascha-Oliver Prolic" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link href='https://fonts.googleapis.com/css?family=Cabin+Sketch' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="bower_components/reveal.js/css/reveal.min.css">
+    <link rel="stylesheet" href="bower_components/reveal.js/css/theme/default.css" id="theme">
+    <!-- For syntax highlighting -->
+    <link rel="stylesheet" href="bower_components/reveal.js/lib/css/zenburn.css" id="highlight-theme">
+    <!-- If the query includes 'print-pdf', use the PDF print sheet -->
+    <script>
+        document.write( '<link rel="stylesheet" href="bower_components/reveal.js/css/print/' + ( window.location.search.match( /print-pdf/gi ) ? 'pdf' : 'paper' ) + '.css" type="text/css" media="print">' );
+    </script>
+    <!--[if lt IE 9]>
+    <script src="lib/js/html5shiv.js"></script>
+    <![endif]-->
+    <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<section>
+    <h2>
+        Hi!
+    </h2>
+</section>
+
+<section>
+    <h2>
+        Sascha-Oliver Prolic<br>
+    </h2>
+</section>
+
+<section>
+    <h2>
+        <img
+            src="assets/img/zf-logo.svg"
+            alt="Zend Framework 2"
+            width="150px"
+            style="margin: -8px;"
+        />
+        contributor
+    </h2>
+</section>
+
+<section>
+    <h2>
+        <img
+            src="assets/img/prooph-logo.png"
+            alt="Prooph components"
+            style="margin: -8px;"
+        />
+        maintainer
+    </h2>
+</section>
+
+<section>
+    <section>
+        <h2>Current projects</h2>
+        <p>
+            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prooph/event-store">Prooph Event Store</a>,
+            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prooph/pdo-event-store">Prooph PDO Event Store</a>,
+            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prooph/service-bus">Prooph Service-Bus</a>,
+            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prooph/event-sourcing">Prooph Event Sourcing</a>,
+            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prooph/psr7-middleware">Prooph PSR-7 middleware</a>,
+            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prooph/service-bus-zfc-rbac-bridge">Service-Bus ZFC-Rbac Bridge</a>,
+            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prolic/HumusAmqp">HumusAmqp</a>,
+            <a style="color: rgb(0,0,0)" target="_blank" href="https://github.com/prolic/PhpDisruptor">PhpDisruptor</a>
+        </p>
+    </section>
+</section>
+
+<section>
+    <h1>Prooph Event Store v7</h1>
+</section>
+
+<section>
+    <h1>Changes & New Features</h1>
+</section>
+
+<section>
+    <h2>Changes</h2>
+    <p class="fragment" data-fragment-index="1">Requires PHP 7.1 (strict types, scalar type hints, return types, ...)</p>
+    <p class="fragment" data-fragment-index="2">Event Store Interfaces</p>
+    <p class="fragment" data-fragment-index="3">Different Event Store Implementations - no adapters</p>
+    <p class="fragment" data-fragment-index="4">more</p>
+</section>
+
+<section>
+    <pre><code class="php">interface EventStore
+{
+    public function create(Stream $stream): void;
+
+    public function appendTo(
+        StreamName $streamName,
+        Iterator $streamEvents
+    ): void;
+
+    /* more methods */
+}</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">interface EventStore
+{
+    /* more methods */
+
+    public function fetchStreamMetadata(
+        StreamName $streamName
+    ): array;
+
+    public function hasStream(StreamName $streamName): bool;
+
+    public function delete(StreamName $streamName): void;
+
+    /* more methods */
+}</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">interface EventStore
+{
+    /* more methods */
+
+    public function load(
+        StreamName $streamName,
+        int $fromNumber = 1,
+        int $count = null,
+        MetadataMatcher $metadataMatcher = null
+    ): Stream;
+
+    public function loadReverse(
+        StreamName $streamName,
+        int $fromNumber = PHP_INT_MAX,
+        int $count = null,
+        MetadataMatcher $metadataMatcher = null
+    ): Stream;
+}</code></pre>
+</section>
+
+<section>
+    <h2>MetadataMatcher</h2>
+    <pre><code class="php">
+$event = UserCreated::with(['name' => 'John'], 1);
+$event = $event->withAddedMetadata('foo', 'bar');
+$event = $event->withAddedMetadata('int', 5);
+
+var_dump($event->metadata());
+
+// output
+
+[
+    'foo' => 'bar',
+    'int' => 5
+]
+    </code></pre>
+</section>
+
+<section>
+    <h2>MetadataMatcher</h2>
+    <pre><code class="php">
+$metadataMatcher = new MetadataMatcher();
+$metadataMatcher = $metadataMatcher->withMetadataMatch(
+    'foo',
+    Operator::EQUALS(),
+    'bar'
+);
+$metadataMatcher = $metadataMatcher->withMetadataMatch(
+    'int',
+    Operator::GREATER_THAN(),
+    4
+);
+
+$stream = $this->eventStore->load(
+    $streamName,
+    1,
+    null,
+    $metadataMatcher
+);
+    </code></pre>
+</section>
+
+<section>
+    <h2>Hire me!</h2>
+</section>
+
+<section>
+    <h2>Contact me</h2>
+    <p><a href="https://github.com/prolic" target="_blank">github.com/prolic</a></p>
+    <p><a href="https://twitter.com/sasaprolic" target="_blank">Twitter @sasaprolic</a></p>
+    <p><a href="https://gitter.im/prooph/improoph" target="_blank">Prooph Gitter Chat (https://gitter.im/prooph/improoph)</a></p>
+</section>
+
+<section>
+    <h2>Thank you!</h2>
+    <p><a href="http://prolic.github.io/prooph-v7-talk/" target="_blank">Slides at: http://prolic.github.io/prooph-v7-talk/</a></p>
+</section>
+
+</div>
+</div>
+
+<script src="bower_components/reveal.js/lib/js/head.min.js"></script>
+<script src="bower_components/reveal.js/js/reveal.min.js"></script>
+<script>
+    // Configure Reveal
+    // Full list of configuration options available here:
+    // https://github.com/hakimel/reveal.js#configuration
+    Reveal.initialize({
+        controls: true,
+        progress: true,
+        history: true,
+        center: true,
+
+        theme: Reveal.getQueryHash().theme || 'sky', // available themes are in /css/theme
+        transition: Reveal.getQueryHash().transition || 'none', // default/cube/page/concave/zoom/linear/fade/none
+
+        // Optional libraries used to extend on reveal.js
+        dependencies: [
+            { src: 'bower_components/reveal.js/lib/js/classList.js', condition: function() { return !document.body.classList; } },
+            { src: 'bower_components/reveal.js/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+            { src: 'bower_components/reveal.js/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+            { src: 'bower_components/reveal.js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+            { src: 'bower_components/reveal.js/plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+            { src: 'bower_components/reveal.js/plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } },
+            // { src: 'plugin/search/search.js', async: true, condition: function() { return !!document.body.classList; } }
+            //{ src: 'bower_components/reveal.js/plugin/remotes/remotes.js', async: true, condition: function() { return !!document.body.classList; } }
+
+            { src: 'js/loadhtmlslides.js', condition: function() { return !!document.querySelector( '[data-html]' ); } }
+        ]
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,75 @@
+.reveal section img {
+    border: 0;
+    background: none;
+    box-shadow: 0 0 #000;
+}
+
+.soothe .reveal .state-background {
+    background: rgba(255, 255, 255, 0.6);
+}
+
+.pros-line:before, .cons-line:before {
+    content: ' ';
+    position: absolute;
+    width: 0;
+    height: 0;
+    left: -40px;
+    border: 12px solid transparent;
+}
+
+.pros-line:before {
+    border-bottom-width: 22px;
+    border-bottom-color: green;
+}
+
+.cons-line:before {
+    border-top-width: 22px;
+    border-top-color: red;
+}
+
+.left {
+    text-align: left;
+}
+
+body {
+    background: #040E27;
+    background: -moz-radial-gradient(center, circle cover, #d59177 0%, #c97150 100%);
+    background: -webkit-gradient(radial, center center, 0px, center center, 100%, color-stop(0%, #d59177), color-stop(100%, #c97150));
+    background: -webkit-radial-gradient(center, circle cover, #d59177 0%, #c97150 100%);
+    background: -o-radial-gradient(center, circle cover, #d59177 0%, #c97150 100%);
+    background: -ms-radial-gradient(center, circle cover, #d59177 0%, #c97150 100%);
+    background: radial-gradient(center, circle cover, #d59177 0%, #c97150 100%);
+    background-color: #040E27;
+}
+
+.reveal section img {
+    border: 0;
+    background: none;
+    box-shadow: 0 0 #000;
+}
+
+.reveal pre {
+    width: 100%;
+    font-size: 0.68em;
+}
+
+.reveal pre code {
+    max-height: 600px;
+}
+
+.reveal h1, .reveal h2, .reveal h3, .reveal h4, .reveal h5, .reveal h6 {
+    font-family: "Cabin Sketch",Helvetica,sans-serif;
+    text-transform:none;line-height:1.3;font-weight:normal;letter-spacing:normal;
+    color: #fff;
+}
+
+section img {
+    box-shadow: none !important;
+}
+
+p.event {
+    border: 4px solid white;
+    width: 70%;
+    margin-left: auto;
+    margin-right: auto;
+}
