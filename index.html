@@ -122,6 +122,48 @@ interface EventStore
 </section>
 
 <section>
+    <h2>MetadataMatcher</h2>
+    <pre><code class="php">
+$event = UserCreated::with(['name' => 'John'], 1);
+$event = $event->withAddedMetadata('foo', 'bar');
+$event = $event->withAddedMetadata('int', 5);
+
+var_dump($event->metadata());
+
+// output
+
+[
+    'foo' => 'bar',
+    'int' => 5
+]
+</code></pre>
+</section>
+
+<section>
+    <h2>MetadataMatcher</h2>
+    <pre><code class="php">
+$metadataMatcher = new MetadataMatcher();
+$metadataMatcher = $metadataMatcher->withMetadataMatch(
+    'foo',
+    Operator::EQUALS(),
+    'bar'
+);
+$metadataMatcher = $metadataMatcher->withMetadataMatch(
+    'int',
+    Operator::GREATER_THAN(),
+    4
+);
+
+$stream = $eventStore->load(
+    $streamName,
+    1,
+    null,
+    $metadataMatcher
+);
+    </code></pre>
+</section>
+
+<section>
     <pre><code class="php">namespace Prooph\EventStore;
 
 interface TransactionalEventStore extends EventStore
@@ -178,48 +220,6 @@ interface TransactionalActionEventEmitterEventStore extends
     <p class="fragment" data-fragment-index="1">InMemoryEventStore (extends AbstractTransactionalActionEventEmitterEventStore)</p>
     <p class="fragment" data-fragment-index="2">MySQLEventStore (extends AbstractActionEventEmitterEventStore)</p>
     <p class="fragment" data-fragment-index="3">PostgresEventStore (extends AbstractTransactionalActionEventEmitterEventStore)</p>
-</section>
-
-<section>
-    <h2>MetadataMatcher</h2>
-    <pre><code class="php">
-$event = UserCreated::with(['name' => 'John'], 1);
-$event = $event->withAddedMetadata('foo', 'bar');
-$event = $event->withAddedMetadata('int', 5);
-
-var_dump($event->metadata());
-
-// output
-
-[
-    'foo' => 'bar',
-    'int' => 5
-]
-    </code></pre>
-</section>
-
-<section>
-    <h2>MetadataMatcher</h2>
-    <pre><code class="php">
-$metadataMatcher = new MetadataMatcher();
-$metadataMatcher = $metadataMatcher->withMetadataMatch(
-    'foo',
-    Operator::EQUALS(),
-    'bar'
-);
-$metadataMatcher = $metadataMatcher->withMetadataMatch(
-    'int',
-    Operator::GREATER_THAN(),
-    4
-);
-
-$stream = $eventStore->load(
-    $streamName,
-    1,
-    null,
-    $metadataMatcher
-);
-    </code></pre>
 </section>
 
 <section>
