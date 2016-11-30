@@ -31,19 +31,8 @@
 </section>
 
 <section>
+    <img src="assets/img/me.png" alt="me" width="200" height="200">
     <h1>Sascha-Oliver Prolic</h1>
-</section>
-
-<section>
-    <h2>
-        <img
-            src="assets/img/zf-logo.svg"
-            alt="Zend Framework 2"
-            width="150px"
-            style="margin: -8px;"
-        />
-        contributor
-    </h2>
 </section>
 
 <section>
@@ -58,7 +47,7 @@
 </section>
 
 <section>
-    <h1>Prooph Event Store v7</h1>
+    <h1>Prooph Event Store v7.0.0</h1>
 </section>
 
 <section>
@@ -126,6 +115,10 @@ interface EventStore
         MetadataMatcher $metadataMatcher = null
     ): Stream;
 }</code></pre>
+</section>
+
+<section>
+    <img src="assets/img/metadatamatcher.jpg" width="720" height="540">
 </section>
 
 <section>
@@ -297,7 +290,7 @@ interface IndexingStrategy
 <section>
     <h2>SimpleStreamStrategy</h2>
     <p class="fragment" data-fragment-index="1">Used outside of event sourcing</p>
-    <p class="fragment" data-fragment-index="2">Useful for projections, too</p>
+    <p class="fragment" data-fragment-index="2">Useful especially for projections</p>
 </section>
 
 <section>
@@ -350,6 +343,10 @@ interface Query
 }</code></pre>
 </section>
 
+<section>
+    <img src="assets/img/too-much.jpg" width="807" height="527">
+</section>
+    
 <section>
     <pre><code class="php">function prepareEventStream(string $name, EventStore $eventStore)
 {
@@ -458,6 +455,40 @@ $eventStore->appendTo(
 $query->run();
 echo $query->getState()['count']; // 100
 </code></pre>
+</section>
+
+<section>
+    <img src="assets/img/projections.jpg" width="960" height="539">
+</section>
+
+<section>
+    <h2>Projections in the past</h2>
+    <pre><code class="php">namespace Prooph\ProophessorDo\Projection\User;
+
+final class UserProjector
+{
+    public function onUserWasRegistered(UserWasRegistered $event)
+    {
+        $this->connection->insert(Table::USER, [
+            'id' => $event->userId()->toString(),
+            'name' => $event->name(),
+            'email' => $event->emailAddress()->toString()
+        ]);
+    }
+
+    public function onTodoWasPosted(TodoWasPosted $event)
+    {
+        // ...
+    }
+}</code></pre>
+</section>
+    
+<section>
+    <img src="assets/img/hell.jpg" width="765" height="432">
+</section>
+
+<section>
+    <img src="assets/img/rescue.jpg" width="750" height="423">
 </section>
 
 <section>
@@ -679,28 +710,6 @@ interface ReadModelProjection
 </section>
 
 <section>
-    <h2>Projections in the past</h2>
-    <pre><code class="php">namespace Prooph\ProophessorDo\Projection\User;
-
-final class UserProjector
-{
-    public function onUserWasRegistered(UserWasRegistered $event)
-    {
-        $this->connection->insert(Table::USER, [
-            'id' => $event->userId()->toString(),
-            'name' => $event->name(),
-            'email' => $event->emailAddress()->toString()
-        ]);
-    }
-
-    public function onTodoWasPosted(TodoWasPosted $event)
-    {
-        // ...
-    }
-}</code></pre>
-</section>
-
-<section>
     <pre><code class="php">$this->prepareEventStream('user-123', $eventStore);
 
 $projection = new PostgresEventStoreReadModelProjection(
@@ -739,6 +748,10 @@ $projection
 </section>
 
 <section>
+    <img src="assets/img/heaven.jpg" width="874" height="674">
+</section>
+
+<section>
     <h2>Before final release</h2>
     <p class="fragment" data-fragment-index="1">Updating some other components</p>
     <p class="fragment" data-fragment-index="2">Write some more tests</p>
@@ -754,6 +767,10 @@ $projection
     <p><a href="https://github.com/prolic" target="_blank">github.com/prolic</a></p>
     <p><a href="https://twitter.com/sasaprolic" target="_blank">Twitter @sasaprolic</a></p>
     <p><a href="https://gitter.im/prooph/improoph" target="_blank">Prooph Gitter Chat (https://gitter.im/prooph/improoph)</a></p>
+</section>
+    
+<section>
+    <img src="assets/img/thats-all.jpg" width="700" height="716">
 </section>
 
 <section>
