@@ -564,7 +564,10 @@ for ($i = 51; $i < 100; $i++) {
 $events[] = UsernameChanged::with([
     'name' => 'Oliver'
 ], 100);
-$eventStore->appendTo(new StreamName('user-123'), new ArrayIterator($events));
+$eventStore->appendTo(
+    new StreamName('user-123'),
+    new ArrayIterator($events)
+);
 
 // more code
 </code></pre>
