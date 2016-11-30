@@ -123,8 +123,7 @@ interface EventStore
 
 <section>
     <h2>MetadataMatcher</h2>
-    <pre><code class="php">
-$event = UserCreated::with(['name' => 'John'], 1);
+    <pre><code class="php">$event = UserCreated::with(['name' => 'John'], 1);
 $event = $event->withAddedMetadata('foo', 'bar');
 $event = $event->withAddedMetadata('int', 5);
 
@@ -135,14 +134,12 @@ var_dump($event->metadata());
 [
     'foo' => 'bar',
     'int' => 5
-]
-</code></pre>
+]</code></pre>
 </section>
 
 <section>
     <h2>MetadataMatcher</h2>
-    <pre><code class="php">
-$metadataMatcher = new MetadataMatcher();
+    <pre><code class="php">$metadataMatcher = new MetadataMatcher();
 $metadataMatcher = $metadataMatcher->withMetadataMatch(
     'foo',
     Operator::EQUALS(),
@@ -159,8 +156,7 @@ $stream = $eventStore->load(
     1,
     null,
     $metadataMatcher
-);
-    </code></pre>
+);</code></pre>
 </section>
 
 <section>
@@ -379,7 +375,7 @@ $query
     })
     ->fromStream('user-123')
     ->when([
-        UsernameChanged::class => function (
+        'user-name-changed' => function (
             array $state, UsernameChanged $event
         ): array {
             $state['count']++;
@@ -607,7 +603,7 @@ $projection = new PostgresEventStoreProjection(
 $projection
     ->fromStream('user-123')
     ->when([
-        UserCreated::class => function ($state, $event): void {
+        'user-created' => function ($state, $event): void {
             $this->emit($event);
         }
     ])
@@ -731,13 +727,13 @@ $projection = new PostgresEventStoreReadModelProjection(
 $projection
     ->fromAll()
     ->when([
-        UserCreated::class => function ($state, Message $event) {
+        'user-created' => function ($state, Message $event) {
             $this->readModelProjection()->insert(
                 'name',
                 $event->payload()['name']
             );
         },
-        UsernameChanged::class => function ($state, Message $event) {
+        'username-changed' => function ($state, Message $event) {
             $this->readModelProjection()->update(
                 'name',
                 $event->payload()['name']
