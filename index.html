@@ -2,7 +2,7 @@
 <html lang="en" xmlns="http://www.w3.org/1999/html">
 <head>
     <meta charset="utf-8" />
-    <title>CQRS &amp; Event Sourcing</title>
+    <title>Prooph Event Store v7.0.0</title>
     <meta name="description" content="CQRS &amp; Event Sourcing Talk" />
     <meta name="author" content="Sascha-Oliver Prolic" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -95,6 +95,58 @@ interface EventStore
 </section>
 
 <section>
+    <h2>For projections and queries</h2>
+    <p>More on this later...</p>
+</section>
+
+<section>
+    <pre><code class="php">namespace Prooph\EventStore;
+
+interface EventStore
+{
+    /* more methods */
+
+    public function createQuery(QueryFactory $factory = null): Query;
+
+    public function createProjection(
+        string $name,
+        ProjectionOptions $options = null,
+        ProjectionFactory $factory = null
+    ): Projection;
+
+    public function createReadModelProjection(
+        string $name,
+        ReadModel $readModel,
+        ProjectionOptions $options = null,
+        ReadModelProjectionFactory $factory = null
+    ): ReadModelProjection;
+
+    /* more methods */
+}</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">namespace Prooph\EventStore;
+
+interface EventStore
+{
+    /* more methods */
+
+    public function getDefaultQueryFactory(): QueryFactory;
+
+    public function getDefaultProjectionFactory(): ProjectionFactory;
+
+    public function getDefaultReadModelProjectionFactory(): ReadModelProjectionFactory;
+
+    /* more methods */
+}</code></pre>
+</section>
+
+<section>
+    <h2>And for the read side...</h2>
+</section>
+
+<section>
     <pre><code class="php">namespace Prooph\EventStore;
 
 interface EventStore
@@ -114,6 +166,8 @@ interface EventStore
         int $count = null,
         MetadataMatcher $metadataMatcher = null
     ): Stream;
+
+    /* more methods */
 }</code></pre>
 </section>
 
@@ -170,31 +224,63 @@ interface TransactionalEventStore extends EventStore
 
     public function rollback(): void;
 
-    public function isInTransaction(): bool;
+    public function inTransaction(): bool;
+
+    public function transactional(callable $callable);
 }</code></pre>
+</section>
+
+<section>
+    <h2>Action Events</h2>
+    <p>When you need to listen to specifc events</p>
 </section>
 
 <section>
     <pre><code class="php">namespace Prooph\EventStore;
 
-interface ActionEventEmitterEventStore extends EventStore
+class ActionEventEmitterEventStore implements EventStoreDecorator
 {
-    const EVENT_APPEND_TO = 'appendTo';
-    const EVENT_CREATE = 'create';
-    const EVENT_LOAD = 'load';
-    const EVENT_LOAD_REVERSE = 'loadReverse';
-    const EVENT_DELETE = 'delete';
-    const EVENT_HAS_STREAM = 'hasStream';
-    const EVENT_FETCH_STREAM_METADATA = 'fetchStreamMetadata';
+    public const EVENT_APPEND_TO = 'appendTo';
+    public const EVENT_CREATE = 'create';
+    public const EVENT_LOAD = 'load';
+    public const EVENT_LOAD_REVERSE = 'loadReverse';
+    public const EVENT_DELETE = 'delete';
+    public const EVENT_HAS_STREAM = 'hasStream';
+    public const EVENT_FETCH_STREAM_METADATA = 'fetchStreamMetadata';
+    public const EVENT_UPDATE_STREAM_METADATA = 'updateStreamMetadata';
 
-    public function getActionEventEmitter(): ActionEventEmitter;
+    /* implementations of the event store interface */
 }</code></pre>
 </section>
 
 <section>
     <pre><code class="php">namespace Prooph\EventStore;
 
-interface TransactionalActionEventEmitterEventStore extends
+interface ActionEventEmitterEventStore implements EventStoreDecorator
+{
+    /* more methods */
+
+    public function attach(string $eventName, callable $listener, int $priority = 0): ListenerHandler
+    {
+        return $this->actionEventEmitter->attachListener($eventName, $listener, $priority);
+    }
+
+    public function detach(ListenerHandler $handler): void
+    {
+        $this->actionEventEmitter->detachListener($handler);
+    }
+
+    public function getInnerEventStore(): EventStore
+    {
+        return $this->eventStore;
+    }
+}</code></pre>
+</section>
+
+<section>
+    <pre><code class="php">namespace Prooph\EventStore;
+
+class TransactionalActionEventEmitterEventStore extends
     ActionEventEmitterEventStore,
     TransactionalEventStore
 {
@@ -206,67 +292,58 @@ interface TransactionalActionEventEmitterEventStore extends
 </section>
 
 <section>
-    <h2>Provides abstract classes</h2>
-    <p class="fragment" data-fragment-index="1">AbstractActionEventEmitterEventStore</p>
-    <p class="fragment" data-fragment-index="2">AbstractTransactionalActionEventEmitterEventStore</p>
+    <pre><code class="php">namespace Prooph\EventStore;
+
+class TransactionalActionEventEmitterEventStore extends ActionEventEmitterEventStore implements TransactionalEventStore
+{
+    public const EVENT_BEGIN_TRANSACTION = 'beginTransaction';
+    public const EVENT_COMMIT = 'commit';
+    public const EVENT_ROLLBACK = 'rollback';
+
+    /* implementations of TransactionEventStore methods */
+
+}</code></pre>
+</section>
+
+<section>
+    <h2>(Transactional-)<br/>ActionEvent-<br/>EmitterEventStore</h2>
+    <p class="fragment" data-fragment-index="1">It simply wraps any event store implementation to have access to action events.</p>
+    <p class="fragment" data-fragment-index="2">There are no .pre or .post events, it works with event priorities instead.</p>
 </section>
 
 <section>
     <h2>New implementations</h2>
-    <p class="fragment" data-fragment-index="1">InMemoryEventStore (extends AbstractTransactionalActionEventEmitterEventStore)</p>
-    <p class="fragment" data-fragment-index="2">MySQLEventStore (extends AbstractActionEventEmitterEventStore)</p>
-    <p class="fragment" data-fragment-index="3">PostgresEventStore (extends AbstractTransactionalActionEventEmitterEventStore)</p>
+    <p class="fragment" data-fragment-index="1">InMemoryEventStore</p>
+    <p class="fragment" data-fragment-index="2">MySqlEventStore</p>
+    <p class="fragment" data-fragment-index="3">PostgresEventStore</p>
 </section>
 
 <section>
-    <h1>Details of PDOEventStore</h1>
+    <h1>Details of PdoEventStore</h1>
 </section>
 
 <section>
-    <pre><code class="php">namespace Prooph\EventStore\PDO;
+    <pre><code class="php">namespace Prooph\EventStore\Pdo;
 
-interface TableNameGeneratorStrategy
+interface PersistenceStrategy
 {
-    public function __invoke(StreamName $streamName): string;
-}</code></pre>
-</section>
-
-<section>
-    <pre><code class="php">namespace Prooph\EventStore\PDO\TableNameGeneratorStrategy;
-
-final class Sha1 implements TableNameGeneratorStrategy
-{
-    public function __invoke(StreamName $streamName): string
-    {
-        return '_' . sha1($streamName->toString());
-    }
-}</code></pre>
-</section>
-
-<section>
-    <pre><code class="php">namespace Prooph\EventStore\PDO;
-
-interface IndexingStrategy
-{
-    /**
-     * @return string[]
-     */
     public function createSchema(string $tableName): array;
 
-    public function oneStreamPerAggregate(): bool;
+    public function columnNames(): array;
 
-    /**
-     * @return string[]
-     */
+    public function prepareData(Iterator $streamEvents): array;
+
     public function uniqueViolationErrorCodes(): array;
+
+    public function generateTableName(StreamName $streamName): string;
 }</code></pre>
 </section>
 
 <section>
-    <h2>Different indexing strategies</h2>
-    <p class="fragment" data-fragment-index="1">MySQLAggregateStreamStrategy</p>
-    <p class="fragment" data-fragment-index="2">MySQLSingleStreamStrategy</p>
-    <p class="fragment" data-fragment-index="3">MySQLSimpleStreamStrategy</p>
+    <h2>Different default persistance strategies</h2>
+    <p class="fragment" data-fragment-index="1">MySqlAggregateStreamStrategy</p>
+    <p class="fragment" data-fragment-index="2">MySqlSingleStreamStrategy</p>
+    <p class="fragment" data-fragment-index="3">MySqlSimpleStreamStrategy</p>
     <p class="fragment" data-fragment-index="4">Postgres...</p>
 </section>
 
@@ -368,7 +445,7 @@ interface Query
 
 <section>
     <pre><code class="php">prepareEventStream('user-123', $eventStore);
-$query = new InMemoryEventStoreQuery($eventStore);
+$query = $eventStore->createQuery();
 $query
     ->init(function (): array {
         return ['count' => 0];
@@ -394,8 +471,7 @@ $query->run();
     <pre><code class="php">prepareEventStream('user-123', $eventStore);
 prepareEventStream('user-234', $eventStore);
 
-$query = new PostgresEventStoreQuery($eventStore, $connection, 'event_streams');
-
+$query = $eventStore->createQuery();
 $query
     ->init(function (): array {
         return ['count' => 0];
@@ -416,7 +492,7 @@ echo $query->getState()['count']; // 100
 <section>
     <pre><code class="php">prepareEventStream('user-123', $eventStore);
 
-$query = new PostgresEventStoreQuery($eventStore, $connection, 'event_streams');
+$query = $eventStore->createQuery();
 $query
     ->init(function (): array {
         return ['count' => 0];
@@ -498,42 +574,50 @@ final class UserProjector
 <section>
     <pre><code class="php">namespace Prooph\EventStore\Projection;
 
-interface Projection extends Query
+interface Projection
 {
+        <?php
+/**
+ * This file is part of the prooph/event-store.
+ * (c) 2014-2017 prooph software GmbH <contact@prooph.de>
+        * (c) 2015-2017 Sascha-Oliver Prolic <saschaprolic@googlemail.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+declare(strict_types=1);
+
+namespace Prooph\EventStore\Projection;
+
+use Closure;
+use Prooph\Common\Messaging\Message;
+
+interface Projection
+{
+    public function init(Closure $callback): Projection;
+    public function fromStream(string $streamName): Projection;
+    public function fromStreams(string ...$streamNames): Projection;
+    public function fromCategory(string $name): Projection;
+    public function fromCategories(string ...$names): Projection;
+    public function fromAll(): Projection;
+    public function when(array $handlers): Projection;
+    public function whenAny(Closure $closure): Projection;
+    public function reset(): void;
+    public function stop(): void;
+    public function getState(): array;
     public function getName(): string;
-
     public function emit(Message $event): void;
-
     public function linkTo(string $streamName, Message $event): void;
-
     public function delete(bool $deleteEmittedEvents): void;
+    public function run(bool $keepRunning = true): void;
 }</code></pre>
 </section>
 
 <section>
     <pre><code class="php">prepareEventStream('user-123', $eventStore);
 
-$eventStore->create(new Stream(
-    new StreamName('foo'),
-    new ArrayIterator()
-));
-
-$projection = new PostgresEventStoreProjection(
-    $eventStore,
-    $connection,
-    'test_projection', // unique name of projection
-    'event_streams', // event streams table
-    'projections', // projections table
-    1000, // timeout in ms
-    true // enable emit
-);
-
-// more code</code></pre>
-</section>
-
-<section>
-    <pre><code class="php">// more code
-
+$projection = $eventStore->createProjection('test_projection');
 $projection
     ->fromStream('user-123')
     ->whenAny(
@@ -593,16 +677,7 @@ echo iterator_count($eventStore->load(
 <section>
     <pre><code class="php">$prepareEventStream('user-123', $eventStore);
 
-$projection = new PostgresEventStoreProjection(
-    $eventStore,
-    $connection,
-    'user_created_projection',
-    'event_streams',
-    'projections',
-    1000,
-    true
-);
-
+$projection = $eventStore->createProjection('user_created_projection');
 $projection
     ->fromStream('user-123')
     ->when([
@@ -669,15 +744,7 @@ array(1) {
 </section>
 
 <section>
-    <pre><code class="php">$projection = new PostgresEventStoreProjection(
-    $eventStore,
-    $connection,
-    'user_sorted_events',
-    'event_streams',
-    'projections',
-    1000,
-    true
-);
+    <pre><code class="php">$projection = $eventStore->createProjection('user_sorted_events');
 
 $projection
     ->fromAll()
@@ -694,31 +761,49 @@ $projection
 
 interface ReadModelProjection
 {
-    public function initProjection(): void;
-    // f.e. create db table
+    public function init(Closure $callback): ReadModelProjection;
+    public function fromStream(string $streamName): ReadModelProjection;
+    public function fromStreams(string ...$streamNames): ReadModelProjection;
+    public function fromCategory(string $name): ReadModelProjection;
+    public function fromCategories(string ...$names): ReadModelProjection;
+    public function fromAll(): ReadModelProjection;
+    public function when(array $handlers): ReadModelProjection;
+    public function whenAny(Closure $closure): ReadModelProjection;
+    public function reset(): void;
+    public function stop(): void;
+    public function getState(): array;
+    public function getName(): string;
+    public function delete(bool $deleteProjection): void;
+    public function run(bool $keepRunning = true): void;
+    public function readModel(): ReadModel;
+}</code></pre>
+</section>
 
-    public function projectionIsInitialized(): bool;
-    // return true if db table is created
+<section>
+    <pre><code class="php">namespace Prooph\EventStore;
 
-    public function resetProjection(): void;
-    // f.e. truncate db table
+interface ReadModel
+{
+    public function init(): void;
 
-    public function deleteProjection(): void;
-    // f.e. delete db table
+    public function isInitialized(): bool;
+
+    public function reset(): void;
+
+    public function delete(): void;
+
+    public function stack(string $operation, ...$args): void;
+
+    public function persist(): void;
 }</code></pre>
 </section>
 
 <section>
     <pre><code class="php">$this->prepareEventStream('user-123', $eventStore);
 
-$projection = new PostgresEventStoreReadModelProjection(
-    $eventStore,
-    $connection,
+$projection = $eventStore->createReadModelProjection(
     'test_projection',
-    $readModel,
-    'event_streams',
-    'projections',
-    1000
+    $readModel
 );
 
 // more code</code></pre>
@@ -731,14 +816,14 @@ $projection
     ->fromAll()
     ->when([
         'user-created' => function ($state, Message $event) {
-            $this->readModelProjection()->insert(
-                'name',
+            $this->readModel()->apply(
+                'createNew',
                 $event->payload()['name']
             );
         },
         'username-changed' => function ($state, Message $event) {
             $this->readModelProjection()->update(
-                'name',
+                'update',
                 $event->payload()['name']
             );
         }
@@ -747,14 +832,12 @@ $projection
 </section>
 
 <section>
-    <img src="assets/img/heaven.jpg" width="874" height="674">
+    <h2>ReadModel</h2>
+    <p>You have to implement this yourself, abstract class AbstractReadModel reduces the boilerplate a little.</p>
 </section>
 
 <section>
-    <h2>Before final release</h2>
-    <p class="fragment" data-fragment-index="1">Updating some other components</p>
-    <p class="fragment" data-fragment-index="2">Write some more tests</p>
-    <p class="fragment" data-fragment-index="3">Write documentation</p>
+    <img src="assets/img/heaven.jpg" width="874" height="674">
 </section>
 
 <section>
